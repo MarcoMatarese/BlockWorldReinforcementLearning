@@ -3,6 +3,7 @@
 #include "BlockWorldReinforcementLearner.h"
 #include "BlockWorldEnvironment.h"
 
+
 int main() {
     std::cout << "Hello Marco!" << std::endl;
 
@@ -13,13 +14,12 @@ int main() {
 
     BlockWorldReinforcementLearner robot = BlockWorldReinforcementLearner(noStates, noActions, env);
 
-    robot.TemporalDifferenceRL(10); // TODO: rimbalza sempre fra stato 8 e 6
+    robot.TemporalDifferenceRL(100);
 
-    /*
     std::cout << "QMATRIX" << std::endl;
     robot.printQMatrix();
     std::cout << "POLICY" << std::endl;
     robot.showPolicy();
-    */
+
     return 0;
 }

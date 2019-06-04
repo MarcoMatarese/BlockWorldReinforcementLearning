@@ -8,6 +8,7 @@
 
 #include <vector>
 #include <iostream>
+#include <random>
 
 
 /**
@@ -145,6 +146,10 @@ public:
      */
     inline void setCurrConfiguration(int config) {
         this->currConfiguration = config;
+    }
+
+    inline int getARandomConfiguration() {
+        return rand() % NO_CONFIGURATIONS;
     }
 
     /**

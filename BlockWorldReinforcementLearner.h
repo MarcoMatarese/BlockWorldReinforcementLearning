@@ -36,6 +36,9 @@ private:
 public:
 
 
+    static const int FINAL_ACTION_CODE = 11;
+
+
     /* ---------------------------------------------------------------- */
     /* --------------------------CONSTRUCTORS-------------------------- */
     /* ---------------------------------------------------------------- */
@@ -115,9 +118,10 @@ public:
     /**
      *
      * @param availableActions
+     * @param e
      * @return
      */
-    int chooseActionFromAvailableActions(std::vector<int> availableActions);
+    int chooseActionFromAvailableActions(std::vector<int> availableActions, float e);
 
     /**
      *

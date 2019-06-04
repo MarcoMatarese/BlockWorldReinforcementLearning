@@ -31,7 +31,7 @@ void BlockWorldEnvironment::initTransitionFunction() {
     this->transitionFunction[3][1] = 12;
 
     this->transitionFunction[4][1] = 13;
-    this->transitionFunction[2][2] = 9;
+    this->transitionFunction[4][2] = 9;
 
     this->transitionFunction[5][0] = 7;
     this->transitionFunction[5][2] = 14;

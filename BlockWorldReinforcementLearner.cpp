@@ -3,6 +3,9 @@
 //
 
 
+#include <limits>
+#include <random>
+#include <ctime>
 #include "BlockWorldReinforcementLearner.h"
 
 
@@ -35,7 +38,7 @@ void BlockWorldReinforcementLearner::initializeQMatrix() {
     for(int i = 0; i < this->QMatrixNoRows; i++)
         for(int j = 0; j < this->QMatrixNoCols; j++)
             this->QMatrix[i][j] = 0;
-
+    /*
     for(int i = 0; i < this->QMatrixNoRows; i++) {
         if (i < this->getPerceivedEnv()->TERMINAL_CODES_RANGE_LEFT) {
             availableAct = this->getPerceivedEnv()->getAvailableActionsFromState(i);
@@ -49,6 +52,7 @@ void BlockWorldReinforcementLearner::initializeQMatrix() {
 
     for(int i = 0; i < this->QMatrixNoCols; i++)
         this->QMatrix[this->QMatrixNoRows - 1][i] = 0;
+    */
 }
 
 /**
@@ -74,11 +78,13 @@ void BlockWorldReinforcementLearner::TemporalDifferenceRL(int noEpochs) {
     int action = 0,
         currState = 0,
         prevState = 0,
+        initState,
         run = 0;
 
     float   reward = 0,
+            epsilon = 0.4,  // epsilon used in e-greedy policy
             alfa = 0.8,     // step-size parameter
-            gamma = 0.95,   // discount factor
+            gamma = 0.9,    // discount factor
             max_a = -1;
 
     // initialize QMatrix[s][a] for all s, a and QMatrix[terminal_state][a]=0 for all a
@@ -87,34 +93,41 @@ void BlockWorldReinforcementLearner::TemporalDifferenceRL(int noEpochs) {
     // repeat for each episode...
     for(int currEpoch = 0; currEpoch < noEpochs; currEpoch++) {
 
-        perceivedEnv->setCurrConfiguration(0);                               // initialize S
+        //perceivedEnv->setCurrConfiguration(0);                // initialize S
+        initState = perceivedEnv->getARandomConfiguration();
+        perceivedEnv->setCurrConfiguration(initState);
 
         run = 0;
         // repeat for each step of episode, until s is terminal...
         while(! perceivedEnv->isInTerminalConfiguration()) {
             availableActions = perceivedEnv->getAvailableActionsFromCurrentState();
 
-            action = chooseActionFromAvailableActions(availableActions);    // choose a from available actions s using policy derived from QMatrix (e-greedy)
+            action = chooseActionFromAvailableActions(availableActions, epsilon);   // choose a from available actions s using policy derived from QMatrix (e-greedy)
+
+            /*std::cout << "available actions: ";
+            for(int i = 0; i < availableActions.size(); i++) std::cout << availableActions[i] << " ";
+            std::cout << std::endl;*/
 
             prevState = this->perceivedEnv->getCurrConfiguration();
-            doAction(action);                                               // do the chosen action and perceive the next state
-            currState = this->perceivedEnv->getCurrConfiguration();          //
+            doAction(action);                                                       // do the chosen action and perceive the next state
+            currState = this->perceivedEnv->getCurrConfiguration();                 //
 
-            reward = calculateReward(currState, action);                    // calculate the reward based on the current state and the executed action
+            reward = calculateReward(currState, action);                            // calculate the reward based on the current state and the executed action
 
+            //std::cout << "reward: " << reward << std::endl;
+
+            // calculate the max expected value on the next state
             max_a = -1;
             for(int i = 0; i < BlockWorldEnvironment::NO_ACTIONS; i++)
                 if(this->QMatrix[currState][i] > max_a)
-                    max_a = this->QMatrix[currState][i];                    // calculate the max expected value on the next state
+                    max_a = this->QMatrix[currState][i];
 
             // Q(s, a) = Q(s, a) + alfa * (r + gamma * max_a(Q(s', a) - Q(s, a))
             this->QMatrix[prevState][action] = QMatrix[prevState][action] + alfa * (reward + gamma * max_a - QMatrix[prevState][action]);
 
             run++;
-            std::cout << "run " << run << " epoca " << currEpoch << " stato " << prevState << " scelto azione " << action << " stato risultante " << currState << std::endl;
-            /*std::cout << "QMATRIX EPOCA " << currEpoch << std::endl;
-            printQMatrix();
-            std::cout << std::endl;*/
+            std::cout << "run " << run << " epoca " << currEpoch << " stato " << prevState <<
+                " scelto azione " << action << " stato risultante " << currState << std::endl;
         }
 
         /*std::cout << "QMATRIX EPOCA " << currEpoch << std::endl;
@@ -125,29 +138,46 @@ void BlockWorldReinforcementLearner::TemporalDifferenceRL(int noEpochs) {
 
 /**
  * Choose one action from the available actions vector with e-greedy policy.
- * e-greedy policy chooses the action with the greater value.
+ * e-greedy policy chooses the action with the greater value of q.
  * @param availableActions available actions vector
+ * @param e epsilon
  * @return the chosen action
  */
-int BlockWorldReinforcementLearner::chooseActionFromAvailableActions(std::vector<int> availableActions) {
+int BlockWorldReinforcementLearner::chooseActionFromAvailableActions(std::vector<int> availableActions, float e) {
 
     int currState = this->perceivedEnv->getCurrConfiguration(),
-        tmpAction = -1,
-        incumbent = -1;
+        action = -1,
+        tmpAction,
+        indx = 0,
+        prob = rand() % 100 + 1;
 
-    for(int currAction = 0; currAction < this->QMatrixNoCols; currAction++) {
-        if(this->QMatrix[currState][currAction] > incumbent) {
-            incumbent = currAction;
-            // check whether currAction is available or not
-            /*for(int i = 0; i < availableActions.size(); i++)
-                if(availableActions[i] == currAction){
-                    incumbent = currAction;
-                    break;
-                }*/
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_real_distribution<> dis(0.0, 1.0);
+
+    float   incumbent = -1 * (std::numeric_limits<float>::max());
+
+    // get the action related to the max value of Q
+    for (std::vector<int>::iterator it = availableActions.begin(); it != availableActions.end(); it++) {
+        if (this->QMatrix[currState][*it] > incumbent) {
+            incumbent = this->QMatrix[currState][*it];
+            action = *it;
         }
     }
 
-    return incumbent;
+    if(prob < (e * 100)) {
+        // exploration
+
+        tmpAction = action;
+        while(tmpAction == action) {
+            //srand(time(NULL));
+            indx = rand() % availableActions.size();
+            action = availableActions[indx];
+        }
+    }
+    // else exploitation
+
+    return action;
 }
 
 /**
@@ -171,21 +201,30 @@ void BlockWorldReinforcementLearner::doAction(int actionCode) {
  * @return r(state, action)
  */
 float BlockWorldReinforcementLearner::calculateReward(int state, int action) {
-    float reward = 0;
+
+    float reward = -1;
+
     int noConfigs = this->perceivedEnv->NO_CONFIGURATIONS,
-        noActions = this->perceivedEnv->NO_ACTIONS;
+        noActions = this->perceivedEnv->NO_ACTIONS,
+        acceptingState = this->perceivedEnv->ACCEPTING_CONFIGURATION_CODE;
 
     // validation control
-    if(state < 0 || state > BlockWorldEnvironment::NO_CONFIGURATIONS ||
-    action < 0 || action > BlockWorldEnvironment::NO_ACTIONS)
+    if(state < 0 || state >= noConfigs ||
+    action < 0 || action >= noActions)
         return 0;
 
-    if(state == noConfigs - 1) {                    // if I'm going to a terminal state
-        if(action == noActions - 1) reward = 1;     // acceptation reward
-        else reward = -1;                           // other terminal states' reward
+    /*
+    if(state == acceptingState) {                                               // if I'm going to a terminal state
+        if(action == FINAL_ACTION_CODE) reward = 10;                            // acceptation reward
+        else reward = -10;                                                      // other terminal states' reward
     }
     else
-        reward = -0.1;                              // any other state's reward
+        reward = -1;                                                            // any other state's reward
+    */
+
+    if(state == acceptingState) reward = 10;
+    else if(state >= 16 && state <= 20) reward = -10;
+    else reward = -1;
 
     return reward;
 }
@@ -202,11 +241,11 @@ void BlockWorldReinforcementLearner::showPolicy() {
 
     float currMax;
 
-    // retrieve and show best policy (e-greedy) from QMatrix
+    // retrieve and show best policy from QMatrix
     for(int i = 0; i < noConfigs; i++) {
         currMax = -1;
         for(int j = 0; j < noActions; j++)
-            if(this->QMatrix[i][j] > currMax) {
+            if(this->QMatrix[i][j] != 0.0 && this->QMatrix[i][j] > currMax) {
                 currMax = this->QMatrix[i][j];
                 currMaxIndx = j;
             }
