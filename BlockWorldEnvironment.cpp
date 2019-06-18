@@ -68,7 +68,85 @@ void BlockWorldEnvironment::initTransitionFunction() {
 
     this->transitionFunction[15][8] = 16;
     this->transitionFunction[15][11] = 6;
+
+    this->transitionFunction[16][2] = 15;
+    this->transitionFunction[17][0] = 11;
+    this->transitionFunction[18][1] = 12;
+    this->transitionFunction[19][1] = 13;
+    this->transitionFunction[20][2] = 14;
+    this->transitionFunction[21][0] = 10;
 }
+
+/**
+ * Initialize the unlikely transition matrix.
+ */
+void BlockWorldEnvironment::initUnlikelyTransitionFunction() {
+
+    for(int i = 0; i < NO_CONFIGURATIONS; i++)
+        for(int j = 0; j < NO_ACTIONS; j++)
+            this->unlikelyTransitionFunction[i][j];
+
+    this->unlikelyTransitionFunction[0][0] = 0;
+    this->unlikelyTransitionFunction[0][1] = 0;
+    this->unlikelyTransitionFunction[0][2] = 0;
+
+    this->unlikelyTransitionFunction[1][0] = 1;
+    this->unlikelyTransitionFunction[1][1] = 1;
+
+    this->unlikelyTransitionFunction[2][0] = 2;
+    this->unlikelyTransitionFunction[2][2] = 2;
+
+    this->unlikelyTransitionFunction[3][0] = 3;
+    this->unlikelyTransitionFunction[3][1] = 3;
+
+    this->unlikelyTransitionFunction[4][1] = 4;
+    this->unlikelyTransitionFunction[4][2] = 4;
+
+    this->unlikelyTransitionFunction[5][0] = 5;
+    this->unlikelyTransitionFunction[5][2] = 5;
+
+    this->unlikelyTransitionFunction[6][1] = 6;
+    this->unlikelyTransitionFunction[6][2] = 6;
+
+    this->unlikelyTransitionFunction[7][3] = 0;
+    this->unlikelyTransitionFunction[7][4] = 0;
+    this->unlikelyTransitionFunction[7][9] = 0;
+
+    this->unlikelyTransitionFunction[8][5] = 0;
+    this->unlikelyTransitionFunction[8][6] = 0;
+    this->unlikelyTransitionFunction[8][10] = 0;
+
+    this->unlikelyTransitionFunction[9][7] = 0;
+    this->unlikelyTransitionFunction[9][8] = 0;
+    this->unlikelyTransitionFunction[9][11] = 0;
+
+    this->unlikelyTransitionFunction[10][3] = 1;
+    this->unlikelyTransitionFunction[10][9] = 1;
+
+    this->unlikelyTransitionFunction[11][4] = 2;
+    this->unlikelyTransitionFunction[11][9] = 2;
+
+    this->unlikelyTransitionFunction[12][5] = 3;
+    this->unlikelyTransitionFunction[12][10] = 3;
+
+    this->unlikelyTransitionFunction[13][6] = 4;
+    this->unlikelyTransitionFunction[13][10] = 4;
+
+    this->unlikelyTransitionFunction[14][7] = 5;
+    this->unlikelyTransitionFunction[14][11] = 5;
+
+    this->unlikelyTransitionFunction[15][8] = 6;
+    this->unlikelyTransitionFunction[15][11] = 6;
+
+    this->unlikelyTransitionFunction[16][2] = 16;
+    this->unlikelyTransitionFunction[17][0] = 17;
+    this->unlikelyTransitionFunction[18][1] = 18;
+    this->unlikelyTransitionFunction[19][1] = 19;
+    this->unlikelyTransitionFunction[20][2] = 20;
+    this->unlikelyTransitionFunction[21][0] = 21;
+}
+
+
 
 /**
 * Get the possible actions depending on the current world's configuration (defined by this->availableActionInN arrays).
@@ -153,12 +231,28 @@ std::vector<int> BlockWorldEnvironment::getAvailableActionsFromState(int state) 
                                                 this->availableActionIn15 + sizeof(this->availableActionIn15) / sizeof(int));
             break;
         case 16:
+            availableActions = std::vector<int>(this->availableActionIn16,
+                                                this->availableActionIn16 + sizeof(this->availableActionIn16) / sizeof(int));
+            break;
         case 17:
+            availableActions = std::vector<int>(this->availableActionIn17,
+                                                this->availableActionIn17 + sizeof(this->availableActionIn17) / sizeof(int));
+            break;
         case 18:
+            availableActions = std::vector<int>(this->availableActionIn18,
+                                                this->availableActionIn18 + sizeof(this->availableActionIn18) / sizeof(int));
+            break;
         case 19:
+            availableActions = std::vector<int>(this->availableActionIn19,
+                                                this->availableActionIn19 + sizeof(this->availableActionIn19) / sizeof(int));
+            break;
         case 20:
+            availableActions = std::vector<int>(this->availableActionIn20,
+                                                this->availableActionIn20 + sizeof(this->availableActionIn20) / sizeof(int));
+            break;
         case 21:
-            std::cout << "No available actions for final configurations." << std::endl;
+            availableActions = std::vector<int>(this->availableActionIn21,
+                                                this->availableActionIn21 + sizeof(this->availableActionIn21) / sizeof(int));
             break;
         default:
             std::cout << "Invalid code for currConfiguration." << std::endl;

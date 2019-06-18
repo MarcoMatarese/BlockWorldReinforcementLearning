@@ -1,11 +1,14 @@
 //
-// Created by matar on 14/05/2019.
+// Created by Marco Matarese on 14/05/2019.
 //
 
 
 #include <limits>
 #include <random>
 #include <ctime>
+#include <cmath>
+#include <math.h>
+
 #include "BlockWorldReinforcementLearner.h"
 
 
@@ -38,7 +41,7 @@ void BlockWorldReinforcementLearner::initializeQMatrix() {
     for(int i = 0; i < this->QMatrixNoRows; i++)
         for(int j = 0; j < this->QMatrixNoCols; j++)
             this->QMatrix[i][j] = 0;
-    /*
+
     for(int i = 0; i < this->QMatrixNoRows; i++) {
         if (i < this->getPerceivedEnv()->TERMINAL_CODES_RANGE_LEFT) {
             availableAct = this->getPerceivedEnv()->getAvailableActionsFromState(i);
@@ -52,7 +55,6 @@ void BlockWorldReinforcementLearner::initializeQMatrix() {
 
     for(int i = 0; i < this->QMatrixNoCols; i++)
         this->QMatrix[this->QMatrixNoRows - 1][i] = 0;
-    */
 }
 
 /**
@@ -68,10 +70,10 @@ void BlockWorldReinforcementLearner::printQMatrix() {
 }
 
 /**
- *
- * @param noEpochs number of epochs that will be executed.
+ * Q learning method. It uses Mean Square Error.
+ * @param noEpochs number of max epochs.
  */
-void BlockWorldReinforcementLearner::TemporalDifferenceRL(int noEpochs) {
+void BlockWorldReinforcementLearner::TemporalDifferenceRL(int noEpochs, int optimalPolicy[22]) {
 
     std::vector<int> availableActions = std::vector<int>();
 
@@ -79,42 +81,65 @@ void BlockWorldReinforcementLearner::TemporalDifferenceRL(int noEpochs) {
         currState = 0,
         prevState = 0,
         initState,
-        run = 0;
+        run = 0,
+        noTotRuns = 0,
+        noVinctory = 0,
+        noStates = this->perceivedEnv->NO_CONFIGURATIONS,
+        noActions = this->perceivedEnv->NO_ACTIONS,
+        *frequencies = new int[22](),                        // frequencies of 'the right' choice per state
+        *noRunsPerState = new int[22]();                    // for each state, what time we were been in that state
 
     float   reward = 0,
             epsilon = 0.4,  // epsilon used in e-greedy policy
             alfa = 0.8,     // step-size parameter
             gamma = 0.9,    // discount factor
-            max_a = -1;
+            max_a = -1,
+            percentage_victory = 0.0;
+
+    double meanSquareError = 10.0,
+            prevValueFunction,
+            currValueFunction,
+            errorThreshold = 0.005;
 
     // initialize QMatrix[s][a] for all s, a and QMatrix[terminal_state][a]=0 for all a
     initializeQMatrix();
 
-    // repeat for each episode...
-    for(int currEpoch = 0; currEpoch < noEpochs; currEpoch++) {
+    // repeat for each episode... (meanSquareError - errorThreshold >= 0 || currEpoch <= noEpochs/3) &&
+    for(int currEpoch = 0; (meanSquareError - errorThreshold >= 0 || currEpoch <= noEpochs/3) && currEpoch < noEpochs; currEpoch++) {
 
-        //perceivedEnv->setCurrConfiguration(0);                // initialize S
-        initState = perceivedEnv->getARandomConfiguration();
-        perceivedEnv->setCurrConfiguration(initState);
+        perceivedEnv->setCurrConfiguration(0);                // initialize S
+        //initState = perceivedEnv->getARandomConfiguration();
+        //perceivedEnv->setCurrConfiguration(initState);
 
         run = 0;
+        meanSquareError = 0.0;
+        prevValueFunction = 0.0;
+        currValueFunction = 0.0;
+
+        /*for(int i = 0; i < noStates; i++)
+            for(int j = 0; j < noActions; j++)
+                prevValueFunction += this->QMatrix[i][j];*/
+
         // repeat for each step of episode, until s is terminal...
         while(! perceivedEnv->isInTerminalConfiguration()) {
+
             availableActions = perceivedEnv->getAvailableActionsFromCurrentState();
 
             action = chooseActionFromAvailableActions(availableActions, epsilon);   // choose a from available actions s using policy derived from QMatrix (e-greedy)
 
-            /*std::cout << "available actions: ";
-            for(int i = 0; i < availableActions.size(); i++) std::cout << availableActions[i] << " ";
-            std::cout << std::endl;*/
-
             prevState = this->perceivedEnv->getCurrConfiguration();
+
+            noRunsPerState[prevState]++;    // each time I go in prevState
+
             doAction(action);                                                       // do the chosen action and perceive the next state
+
+            if(action == optimalPolicy[prevState]) frequencies[prevState]++; // if I choose the optimal action
+
+            //doStochasticAction(action);                                             // try (in a stochastic way) to do the chosen action
+            //doStochasticRandomAction(action);                                     // try (in a stochastic/random way) to do the chosen action
             currState = this->perceivedEnv->getCurrConfiguration();                 //
 
             reward = calculateReward(currState, action);                            // calculate the reward based on the current state and the executed action
-
-            //std::cout << "reward: " << reward << std::endl;
 
             // calculate the max expected value on the next state
             max_a = -1;
@@ -122,18 +147,59 @@ void BlockWorldReinforcementLearner::TemporalDifferenceRL(int noEpochs) {
                 if(this->QMatrix[currState][i] > max_a)
                     max_a = this->QMatrix[currState][i];
 
+            // update mean square error (pt. 1)
+            prevValueFunction = this->QMatrix[prevState][action];
+
             // Q(s, a) = Q(s, a) + alfa * (r + gamma * max_a(Q(s', a) - Q(s, a))
             this->QMatrix[prevState][action] = QMatrix[prevState][action] + alfa * (reward + gamma * max_a - QMatrix[prevState][action]);
 
+            // update mean square error (pt. 2)
+            currValueFunction = this->QMatrix[prevState][action];
+            meanSquareError += abs(prevValueFunction - currValueFunction);    // after it divide these square errors by |S|
+
             run++;
-            std::cout << "run " << run << " epoca " << currEpoch << " stato " << prevState <<
-                " scelto azione " << action << " stato risultante " << currState << std::endl;
+            noTotRuns++;
+
+            if(currState == this->perceivedEnv->ACCEPTING_CONFIGURATION_CODE) noVinctory++;
+
+            percentage_victory = ((float)noVinctory / (float)currEpoch) * 100.0;
+            //std::cout << "noVictory " << noVinctory << std::endl;
+            //std::cout << "run " << run << " epoca " << currEpoch << " stato " << prevState << " scelto azione " << action << " stato risultante " << currState << std::endl;
+            //std::cout << "QMATRIX" << std::endl;
+            //printQMatrix();
+            std::cout << "run " << run << " - epoca " << currEpoch << " - vittorie in % " << percentage_victory << std::endl;
         }
 
-        /*std::cout << "QMATRIX EPOCA " << currEpoch << std::endl;
-        printQMatrix();
-        std::cout << std::endl;*/
+        /*for(int i = 0; i < noStates; i++)
+            for(int j = 0; j < noActions; j++)
+                currValueFunction += this->QMatrix[i][j];*/
+
+        //meanSquareError = sqrt(abs(prevValueFunction - currValueFunction)) / noStates;
+        meanSquareError = sqrt(meanSquareError) / noStates;
+        std::cout << "Mean Square Error: " << meanSquareError << std::endl;
+        std::cout << "Mean Square Error - threshold: " << meanSquareError  - errorThreshold << std::endl;
     }
+
+    std::cout << "OPTIMAL Frequencies:" << std::endl;
+    for(int i = 0; i < 16; i++)
+        std::cout << "freq. " << i << " = " << (float)frequencies[i]/noRunsPerState[i] << std::endl;
+}
+
+/**
+ *
+ */
+float BlockWorldReinforcementLearner::calculateMeanSquareError() {
+
+    int noStates = this->perceivedEnv->NO_CONFIGURATIONS,
+        noActions = this->perceivedEnv->NO_ACTIONS;
+    float meanSquareError = 0.0;
+
+    for(int i = 0; i < noStates; i++)
+        for(int j = 0; j < noActions; j++)
+            i = i;
+            //meanSquareError += sqrt(vecchioQ[i][j] - nuovoQ[i][j])
+
+    return meanSquareError;
 }
 
 /**
@@ -194,6 +260,43 @@ void BlockWorldReinforcementLearner::doAction(int actionCode) {
 }
 
 /**
+ * Try to perceive the 'actionCode' action, this method changes the environment.
+ * There is a high probability to act accordingly with 'transitionFunction' and a low probability to act
+ * accordingly to 'unlikelyTransitionFunction'.
+ * @param actionCode the action's code to do
+ */
+void BlockWorldReinforcementLearner::doStochasticAction(int actionCode) {
+
+    int currState = this->perceivedEnv->getCurrConfiguration(),         // get current world's configuration
+        prob = rand() % 100 + 1,
+        resultingState = -1;
+
+    if(prob <= this->perceivedEnv->PROBABILITY_TO_SUCCESS * 100)
+        resultingState = this->perceivedEnv->getTransitionFunction()[currState][actionCode];
+    else
+        resultingState = this->perceivedEnv->getUnlikelyTransitionFunction()[currState][actionCode];
+
+    this->perceivedEnv->setCurrConfiguration(resultingState);
+}
+
+/**
+ * Try to perceive the 'actionCode' action, this method changes the environment.
+ * There is a high probability to act accordingly with 'transitionFunction' and a low probability to act random.
+ * @param actionCode the action's code to do
+ */
+void BlockWorldReinforcementLearner::doStochasticRandomAction(int actionCode) {
+
+    int currState = this->perceivedEnv->getCurrConfiguration(),         // get current world's configuration
+            prob = rand() % 100 + 1,
+            resultingState = this->perceivedEnv->getTransitionFunction()[currState][actionCode];
+
+    if(prob > this->perceivedEnv->PROBABILITY_TO_SUCCESS * 100)
+        resultingState = this->perceivedEnv->getARandomConfigurationExcept(resultingState);
+
+    this->perceivedEnv->setCurrConfiguration(resultingState);
+}
+
+/**
  * Calculate the reward function based on the agent's current state and the action already done.
  * Currently it is defined by cases.
  * @param state agent's current state
@@ -213,35 +316,24 @@ float BlockWorldReinforcementLearner::calculateReward(int state, int action) {
     action < 0 || action >= noActions)
         return 0;
 
-    /*
-    if(state == acceptingState) {                                               // if I'm going to a terminal state
-        if(action == FINAL_ACTION_CODE) reward = 10;                            // acceptation reward
-        else reward = -10;                                                      // other terminal states' reward
-    }
-    else
-        reward = -1;                                                            // any other state's reward
-    */
-
-    if(state == acceptingState) reward = 10;
-    else if(state >= 16 && state <= 20) reward = -10;
-    else reward = -1;
+    if(state == acceptingState) reward = 10;            // acceptation reward
+    else if(state >= 16 && state <= 20) reward = -10;   // other terminal states' reward
+    else reward = -1;                                   // any other state's reward
 
     return reward;
 }
 
 /**
- * Show the current policy.
+ * Compute the policy based on this->QMatrix values.
  */
-void BlockWorldReinforcementLearner::showPolicy() {
+void BlockWorldReinforcementLearner::calculatePolicy() {
 
     int noConfigs = BlockWorldEnvironment::NO_CONFIGURATIONS,
         noActions = BlockWorldEnvironment::NO_ACTIONS,
-        //policy[noConfigs],
         currMaxIndx = 0;
 
     float currMax;
 
-    // retrieve and show best policy from QMatrix
     for(int i = 0; i < noConfigs; i++) {
         currMax = -1;
         for(int j = 0; j < noActions; j++)
@@ -249,8 +341,55 @@ void BlockWorldReinforcementLearner::showPolicy() {
                 currMax = this->QMatrix[i][j];
                 currMaxIndx = j;
             }
-        std::cout << "In state " << i << " do action " << currMaxIndx << std::endl;
-        //policy[i] = currMaxIndx;
+        this->policy[i] = currMaxIndx;
+    }
+}
+
+/**
+ * Show the current policy.
+ */
+void BlockWorldReinforcementLearner::showPolicy() {
+
+    int noConfigs = BlockWorldEnvironment::NO_CONFIGURATIONS;
+
+    for(int i = 0; i < noConfigs; i++)
+        std::cout << "In state " << i << " do action " << this->getPolicyValue(i) << std::endl;
+}
+
+/**
+ * Compute, for each state, the number of actions to arrive in the accepting configuration.
+ * It uses BlockWorldEnvironment::ACCEPTING_CONFIGURATION_CODE and the transition function!!!
+ * @return an array of integer such that ret[i] = no actions to do in state i to arrive in accepting configuration
+ */
+int *BlockWorldReinforcementLearner::getNoActionsToWin() {
+
+    int acceptConfig = this->perceivedEnv->ACCEPTING_CONFIGURATION_CODE,
+        noStates = this->perceivedEnv->NO_CONFIGURATIONS,
+        noActions = this->perceivedEnv->NO_ACTIONS,
+        currConfig,
+        iter,
+        action,
+        noActionsNeeded,
+        *ret = new int[noStates];
+
+    int max = std::numeric_limits<int>::max();
+
+    // TODO cambia il 16
+    for(int i = 0; i < 16; i++) {
+        noActionsNeeded = 0;
+        currConfig = i;
+        iter = 0;
+
+        while(currConfig != acceptConfig && iter < noStates + noActions) {
+            action = this->getPolicyValue(currConfig);
+            currConfig = this->perceivedEnv->getTransitionFunction()[currConfig][action];
+            noActionsNeeded++;
+            iter++;
+        }
+
+        if(currConfig != acceptConfig) ret[i] = max;
+        ret[i] = noActionsNeeded;
     }
 
+    return ret;
 }

@@ -68,16 +68,18 @@ private:
         availableActionIn13[2] = {6, 10},
         availableActionIn14[2] = {7, 11},
         availableActionIn15[2] = {8, 11},
+        availableActionIn16[1] = {2},
+        availableActionIn17[1] = {0},
+        availableActionIn18[1] = {1},
+        availableActionIn19[1] = {1},
+        availableActionIn20[1] = {2},
+        availableActionIn21[1] = {0},
 
-        **transitionFunction = nullptr;
+        **transitionFunction = nullptr,
+        **unlikelyTransitionFunction = nullptr;
 
     // for final states we need no actions
-    /*    availableActionIn16[] = {},
-        availableActionIn17[] = {},
-        availableActionIn18[] = {},
-        availableActionIn19[] = {},
-        availableActionIn20[] = {},
-        availableActionIn21[] = {}; */
+
 
 
 public:
@@ -94,6 +96,7 @@ public:
     static const int ACCEPTING_CONFIGURATION_CODE = 21;
     static const int TERMINAL_CODES_RANGE_LEFT = 16;
     static const int TERMINAL_CODES_RANGE_RIGHT = 21;
+    static constexpr float PROBABILITY_TO_SUCCESS = 0.8;
 
 
     /* ---------------------------------------------------------------- */
@@ -106,11 +109,15 @@ public:
         this->currConfiguration = INITIAL_CONFIGURATION_CODE;
 
         this->transitionFunction = new int*[NO_CONFIGURATIONS];
+        this->unlikelyTransitionFunction = new int*[NO_CONFIGURATIONS];
 
-        for(int i = 0; i < NO_CONFIGURATIONS; i++)
+        for(int i = 0; i < NO_CONFIGURATIONS; i++) {
             this->transitionFunction[i] = new int[NO_ACTIONS];
+            this->unlikelyTransitionFunction[i] = new int[NO_ACTIONS];
+        }
 
         initTransitionFunction();
+        initUnlikelyTransitionFunction();
 
         //std::cout << availableActionIn0[0] << " " << availableActionIn0[1] << " " << availableActionIn0[2] << std::endl;
     }
@@ -141,6 +148,14 @@ public:
     }
 
     /**
+     * Getter.
+     * @return this->unlikelyTransitionFunction
+     */
+    inline int** getUnlikelyTransitionFunction() {
+        return this->unlikelyTransitionFunction;
+    }
+
+    /**
      * Setter.
      * @param config next currConfig value
      */
@@ -148,8 +163,23 @@ public:
         this->currConfiguration = config;
     }
 
+    /**
+     * Getter
+     * @return a random configuration code.
+     */
     inline int getARandomConfiguration() {
         return rand() % NO_CONFIGURATIONS;
+    }
+
+    /**
+     * Getter.
+     * @param config configuration code to discard.
+     * @return a random configuration code except 'config'.
+     */
+    inline int getARandomConfigurationExcept(int config) {
+        int ret = config;
+        while(ret == config) ret = rand() % NO_CONFIGURATIONS;
+        return ret;
     }
 
     /**
@@ -186,13 +216,25 @@ public:
     void initTransitionFunction();
 
     /**
+     * Initialize the unlikely transition matrix.
+     */
+    void initUnlikelyTransitionFunction();
+
+    /**
      * Check whether the current world's configuration is a terminal one or not.
-     * @param config the world's current configuration
      * @return true if config is a terminal state, false otherwise
      */
     inline bool isInTerminalConfiguration() {
         return  this->currConfiguration >= TERMINAL_CODES_RANGE_LEFT &&
                 this->currConfiguration <= TERMINAL_CODES_RANGE_RIGHT;
+    }
+
+    /**
+     * Check whether the current world's configuration is the accepting one or not.
+     * @return true if config is in the accepting state, false otherwise
+     */
+    inline bool isInAcceptingConfiguration() {
+        return this->currConfiguration == ACCEPTING_CONFIGURATION_CODE;
     }
 };
 
