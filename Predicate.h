@@ -67,10 +67,6 @@ public:
     }
 
     Predicate(std::string n, int noArg, int *arg) {
-        /*this->name = n;
-        this->noArgs = noArg;
-        this->args = new int[noArg];
-        for(int i = 0; i < noArg; i++) this->args[i] = arg[i];*/
         Predicate(n, arg);
         if(this->noArgs != noArg) Predicate();
     }
@@ -83,10 +79,6 @@ public:
     Predicate(Predicate *pred) {
         Predicate(pred->name, pred->args);
     }
-
-    /*~Predicate() {
-        delete[] this->args;
-    }*/
 
 
     /* ---------------------------------------------------------------- */
@@ -117,17 +109,6 @@ public:
         }
     }
 
-    /*
-    inline bool operator==(const Predicate& other) const {
-
-        if(this->name != other.name) return false;
-        if(this->noArgs != other.noArgs) return false;
-        for(int i = 0; i < this->noArgs; i++)
-            if(this->args[i] != other.args[i]) return false;
-        return true;
-    }
-     */
-
 
     /* ---------------------------------------------------------------- */
     /* ----------------------------METHODS----------------------------- */
@@ -145,25 +126,6 @@ public:
      * @return true if l == r, false otherwise
      */
     friend bool operator==(const Predicate& l, const Predicate& r);
-
-    /*
-    inline bool operator<(const Predicate& other) const {
-
-        if(this == &other) return false;                        // clearly false
-
-        if(this->name == other.name) {               // have same name
-            if(this->noArgs == other.noArgs) {
-                for(int i = 0; i < this->noArgs; i++)
-                    if(this->args[i] != other.args[i])          // induce an lexicographic order on arguments
-                        return this->args[i] < other.args[i];
-            }
-            else
-                return this->noArgs < other.noArgs;
-        }
-
-        return this->name.compare(other.name) < 0;              // if they have not same name, compare on it
-    }
-    */
 
     friend bool operator<(const Predicate& r, const Predicate& l);
 

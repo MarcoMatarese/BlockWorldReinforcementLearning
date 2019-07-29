@@ -11,6 +11,7 @@
 #include "Action.h"
 #include <cmath>
 #include <map>
+#include <string>
 
 
 #define ACCEPTING_STATE_REWARD 10
@@ -48,11 +49,7 @@ public:
 
 
     Agent(Environment env, int noBlocks) {
-        /*
-        this->QMatrix = new float*[noRowsQM];
-        for(int i = 0; i < noRowsQM; i++)
-            this->QMatrix[i] = new float[noColsQM];
-        */
+
         this->noActions = pow(noBlocks, 2) + noBlocks;
 
         this->QMatrixNoRows = 1;
@@ -62,8 +59,6 @@ public:
         for(int i = 0; i < this->QMatrixNoRows; i++)
             this->QMatrix[i] = (float *) malloc(this->QMatrixNoCols * sizeof(float));
 
-        //this->policy = new int[this->QMatrixNoRows];
-
         this->perceivedEnv = &env;
 
         this->codeToStates = std::map<int, std::set<Predicate>>();  // Q Matrix row entry - world's config
@@ -71,8 +66,6 @@ public:
         this->codeToAction = std::map<int, Action>();               // Q Matrix col entry - action
         this->actionToCode = std::map<Action, int>();               // reverse of codeToAction
         this->policy = std::map<std::set<Predicate>, Action>();
-
-        //this->perceivedEnv->initCurrState();
 
         this->initCodeToAction();
         this->initCodeToStates();
@@ -84,8 +77,6 @@ public:
         for(int i = 0; i < this->QMatrixNoRows; i++)
             delete[] this->QMatrix[i];
         delete this->QMatrix;
-
-        //delete[] this->policy;
     }
 
 

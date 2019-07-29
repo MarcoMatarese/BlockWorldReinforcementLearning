@@ -112,16 +112,6 @@ public:
         this->noArgs = 0;
     }
 
-    /*~Action() {
-        delete[] this->args;
-        this->preconditions->clear();
-        delete this->preconditions;
-        this->postConditionsToAdd->clear();
-        delete this->postConditionsToAdd;
-        this->postConditionsToDel->clear();
-        delete this->postConditionsToDel;
-    }*/
-
 
     /* ---------------------------------------------------------------- */
     /* -------------------------GETTER-SETTER-------------------------- */

@@ -7,6 +7,8 @@
 #include <limits>
 #include <list>
 #include <time.h>
+#include <fstream>
+#include <string>
 
 
 /**
@@ -64,7 +66,6 @@ void Agent::initializeQMatrix() {
 
     for(int i = 0; i < this->QMatrixNoRows; i++)
         for(int j = 0; j < this->QMatrixNoCols; j++)
-            //this->QMatrix[i][j] = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
             this->QMatrix[i][j] = 0;
 }
 
@@ -80,7 +81,6 @@ void Agent::addRowToQMatrix() {
     this->QMatrix = (float**) realloc(this->QMatrix, (currNoRows + 1) * sizeof(float *));
     this->QMatrix[currNoRows] = (float *) malloc(this->noActions * sizeof(float));
     for(int i = 0; i < this->noActions; i++)
-        //this->QMatrix[currNoRows][i] = static_cast <float> (rand()) / static_cast <float> (RAND_MAX);
         this->QMatrix[currNoRows][i] = 0;
 
     // updates
@@ -141,42 +141,6 @@ void Agent::showPolicy() {
     }
 }
 
-/**
- * TODO something to change!
- * Compute, for each state, the number of actions to arrive in the accepting configuration.
- * @return an array of integer such that ret[i] = no actions to do in state i to arrive in accepting configuration
- */
-int *Agent::getNoActionsToWin() {
-
-    int acceptConfig = this->perceivedEnv->getAcceptingStateCode(),
-            noStates = this->perceivedEnv->getNoStates(),
-            noActions = this->noActions,
-            currConfig,
-            iter,
-            action,
-            noActionsNeeded,
-            *ret = new int[noStates];
-
-    // TODO cambia il 16
-    for(int i = 0; i < 16; i++) {
-        noActionsNeeded = 0;
-        currConfig = i;
-        iter = 0;
-
-        while(currConfig != acceptConfig && iter < noStates + noActions) {
-            //action = this->getPolicyValue(currConfig);
-            // TODO
-            //currConfig = this->perceivedEnv->getTransitionFunction()[currConfig][action];
-            noActionsNeeded++;
-            iter++;
-        }
-
-        //if(currConfig != acceptConfig) ret[i] = max;
-        ret[i] = noActionsNeeded;
-    }
-
-    return ret;
-}
 
 /**
  * Choose an action from all possible action in current state. Whit probability epsilon, choose the best action
@@ -199,33 +163,21 @@ Action Agent::chooseAction(float epsilon) {
         prob = rand() % 100 + 1,
         indx = 0;
 
-    //std::cout << "IN CHOOSE ACTION" << std::endl;
-    //std::cout << "prob: " << prob << " " << epsilon * 100 << std::endl;
-    //std::cout << "rowIndx: " << rowIndx << std::endl;
-
     // collect possible actions in current state
     for(int i = 0; i < noActions; i++) {
         action = this->codeToAction.at(i);
-        /*std::cout << "prima di currStateSatisfy... "<< action << std::endl;
-        for(auto p : *action.getPreconditions()) {
-            std::cout << p << "" << std::endl;
-        }*/
+
         precondsSatisfied = this->perceivedEnv->currStateSatisfyPrecondsOf(action);
-        //std::cout << "action: "<< action << " indice mappa: " << this->actionToCode[action] << std::endl;
-        //std::cout << "action: "<< action << " indice mappa: " << this->getActionToCode(action) << std::endl;
-        //std::cout << "currStateSatisfy: " << std::boolalpha << precondsSatisfied << std::endl;
+
         if(precondsSatisfied) {
-            //std::cout << "dentro precondsSatisfied" << std::endl;
             it = possibleActions.insert(it, action);
             colIndx = this->getActionToCode(action);
             if (colIndx == -1)
                 std::cout << "ERROR: code to action " << action << " not found!" << std::endl;
             else {
-                //std::cout << "colIndx: " << colIndx << " action: " << action << std::endl;
                 if (this->QMatrix[rowIndx][colIndx] > currMax) {
                     currMax = this->QMatrix[rowIndx][colIndx];
                     bestAction = this->codeToAction.at(colIndx);
-                    //std::cout << "best action: "<< bestAction << std::endl;
                 }
             }
         }
@@ -233,14 +185,7 @@ Action Agent::chooseAction(float epsilon) {
 
     if(prob < (epsilon * 100) && possibleActions.size() > 0) {                        // if prob < epsilon, then do another action
         indx = rand() % possibleActions.size();
-        //std::cout << "indx: " << indx << std::endl;
-        std::advance(it, indx);
-        //std::cout << "*it: " << *it << std::endl;
         return *it;
-        for(int i = 0; i < indx; i++)                   // I can't access directly to list elements... uff
-            possibleActions.pop_front();
-        if(possibleActions.size() > 0)                  // if there are other actions to do
-            return possibleActions.front();
     }
 
     return bestAction;                                 // prob >= epsilon
@@ -255,16 +200,8 @@ Action Agent::chooseAction(float epsilon) {
 int Agent::calculateReward(Action action) {
 
     if(this->perceivedEnv->isCurrStateAFinalState()) {
-        /*std::cout << "A FINAL STATE:" << std::endl;
-        for(auto p : this->perceivedEnv->getCurrState())
-            std::cout << p << " ";
-        std::cout << std::endl;*/
 
         if(this->perceivedEnv->isCurrStateTheAcceptingState()) {
-            /*std::cout << "ACCEPTING STATE:" << std::endl;
-            for(auto p : this->perceivedEnv->getCurrState())
-                std::cout << p << " ";
-            std::cout << std::endl;*/
             return ACCEPTING_STATE_REWARD;
         }
         else return REJECTING_STATE_REWARD;
@@ -291,17 +228,12 @@ bool Agent::doAction(Action action) {
     if (preconditionsSatisfied) {
         // delete predicates
         for (Predicate pred : *(action.getPostconditionsToDel())) {
-            //std::cout << "to del " << pred << std::endl;
-            //it = this->perceivedEnv->getCurrState().find(pred);
             this->perceivedEnv->removeToCurrState(pred);
         }
 
         // add predicates
         for (Predicate pred : *(action.getPostconditionsToAdd())) {
-            //std::cout << "to add " << pred << std::endl;
-            //it = this->perceivedEnv->getCurrState().insert(it, pred);
             this->perceivedEnv->addToCurrState(pred);
-            //std::cout << "effettivamente aggiunto " << *it << std::endl;
         }
 
         // non-automatic action effects: they depends on world's current configuration...
@@ -331,13 +263,6 @@ bool Agent::doAction(Action action) {
     }
 
     return true;
-    /*
-    std::cout << "IN DO ACTION" << std::endl;
-    for(Predicate p : this->getPerceivedEnv()->getCurrState()) {
-        std::cout <<  p << std::endl;
-    }
-    std::cout << "--------------------" << std::endl;
-    */
 }
 
 /**
@@ -354,46 +279,39 @@ void Agent::doQLearning(int noEpochs) {
         run,
         noVictories = 0;
 
-    float   epsilon = 0.6,
+    float   epsilon = 0.2,
             reward = 0,
             max_a = 0,
             alfa = 0.8,
-            gamma = 0.9;
+            gamma = 0.9,
+            cumulativeRewards;
 
     std::set<Predicate> prevState,
                         currState;
     std::map<std::set<Predicate>, int>::iterator it;
+
+    std::ofstream outFile;
+
+    //outFile.open("cumulativeRewards.txt");
 
     // for each epochs
     for(int i = 0; i < noEpochs; i++) {
 
         this->perceivedEnv->initCurrState();                            // init world's config
         run = 0;
-        //std::cout << "ACTION TO CODE dopo initCurrState" << std::endl;
-        /*for(auto a : this->getActionToCode())
-            std::cout << a.first << " - " << a.second << std::endl;
-        std::cout << "finito di stampare mappa" << std::endl;*/
+        cumulativeRewards = 0;
 
         // until a final state is reached
         while(! this->perceivedEnv->isCurrStateAFinalState()) {
 
             action = this->chooseAction(epsilon);                       // choose an action
 
-            /*std::cout << "ACTION TO CODE dopo chooseAction" << std::endl;
-            for(auto a : this->getActionToCode())
-                std::cout << a.first << " - " << a.second << std::endl;*/
-
-            //std::cout << "IN DOQLEARNING" << std::endl;
-            //std::cout << "action chosen: " << action << std::endl;
             prevState = this->perceivedEnv->getCurrState();             // collect actual state
                 if(this->doAction(action)) {                                     // do the chosen action
 
-                    /*std::cout << "ACTION TO CODE dopo doAction" << std::endl;
-                    for(auto a : this->getActionToCode())
-                        std::cout << a.first << " - " << a.second << std::endl;*/
-
                     currState = this->perceivedEnv->getCurrState();             // collect resulting state
                     reward = calculateReward(action);                           // calculate reward
+                    cumulativeRewards += reward;
 
                     if(reward == ACCEPTING_STATE_REWARD) noVictories++;
 
@@ -422,11 +340,14 @@ void Agent::doQLearning(int noEpochs) {
                                                                alfa * (reward + gamma * max_a -
                                                                        this->QMatrix[prevStateCode][actionCode]);
                 }
-            std::cout << "Run " << run << ", Epoch " << i << std::endl;
             run++;
         }
+        std::cout << "Epoch: " << i << " Runs: " << run << std::endl;
+        //outFile << cumulativeRewards << std::endl;
     }
 
     std::cout << "Percentage of vinctory: " << (noVictories*100)/noEpochs << std::endl;
     std::cout << "Tot epochs: " << noEpochs << " victory runs: " << noVictories << std::endl;
+
+    //outFile.close();
 }

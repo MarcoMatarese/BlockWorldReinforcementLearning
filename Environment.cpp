@@ -67,19 +67,15 @@ bool Environment::isCurrStateAFinalState() {
 bool Environment::isCurrStateTheAcceptingState() {
     for(Predicate p : this->currState) {
         if(p.getName() == "on" && (p.getArg(0) - p.getArg(1)) != -1) {
-            //std::cout << "primo if on " << p.getArg(0) << " " << p.getArg(1) << std::endl;
             return false;
         }
         else if(p.getName() == "clear" && p.getArg(0) != 0) {
-            //std::cout << "secondo if clear " << p.getArg(0) << std::endl;
             return false;
         }
         else if(p.getName() == "onTable" && p.getArg(0) != this->noBlocks - 1) {
-            //std::cout << "terzo if ontable " << p.getArg(0) << std::endl;
             return false;
         }
         else if(p.getName() == "handEmpty") {
-            //std::cout << "quarto if handEmpty " << std::endl;
             continue;
         }
     }
@@ -93,8 +89,6 @@ bool Environment::isCurrStateTheAcceptingState() {
 void Environment::addToCurrState(Predicate pred) {
     std::set<Predicate>::iterator it = this->currState.begin();
     it = this->currState.insert(it, pred);
-    //std::cout << "(addToCurrState) pred: " << pred << " it: " << *it << std::endl;
-    //this->currState.insert(pred);
 }
 
 /**
@@ -102,7 +96,6 @@ void Environment::addToCurrState(Predicate pred) {
  * @param pred
  */
 void Environment::removeToCurrState(Predicate pred) {
-    //std::cout << "(removeToCurrState) pred: " << pred << std::endl;
     this->currState.erase(pred);
 }
 
