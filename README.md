@@ -5,5 +5,3 @@ The Environment is defined by a set of STRIPS-like Predicates (for example, the 
 Also the Actions are in a STRIPS-like format (for example, take(0)).
 
 The agent doesn't know the entire set of world's configuration: in fact, at the beginning, it know just the initial configuration of blocks. During the learning, going in others, inexplorated configurations, it updates the Q table.
-
-Currently in development... that's why there are so many comments!
